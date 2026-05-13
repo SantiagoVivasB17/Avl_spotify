@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador AVL — Catálogo Spotify</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --sp-green:#1DB954;--sp-green-d:#1aa34a;--sp-black:#121212;--sp-gray:#282828;
+    --sp-gray2:#3E3E3E;--sp-light:#B3B3B3;--sp-white:#FFFFFF;
+  }
+  html,body{background:#0a0a0a;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;font-family:'Nunito',system-ui,sans-serif}
+  #app{background:var(--sp-black);border-radius:18px;padding:24px;width:100%;max-width:720px;color:var(--sp-white)}
+
+  .hdr{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+  .logo{width:30px;height:30px;flex-shrink:0}
+  .hdr-title{font-size:17px;font-weight:800;letter-spacing:-.3px}
+  .hdr-sub{font-size:11px;color:var(--sp-light);margin-left:auto;background:var(--sp-gray);padding:3px 12px;border-radius:20px;white-space:nowrap}
+
+  .tabs{display:flex;margin-bottom:14px;border-bottom:1px solid var(--sp-gray2)}
+  .tab{background:none;border:none;color:var(--sp-light);font-size:12px;font-weight:700;padding:7px 16px;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;transition:color .12s;letter-spacing:.4px}
+  .tab.active{color:var(--sp-white);border-bottom-color:var(--sp-green)}
+  .tab:hover{color:var(--sp-white)}
+
+  .controls{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .inp{flex:1;min-width:140px;background:var(--sp-gray);border:none;border-radius:8px;color:var(--sp-white);font-size:13px;padding:9px 13px;outline:none;font-family:inherit}
+  .inp:focus{box-shadow:0 0 0 2px var(--sp-green)}
+  .inp::placeholder{color:#666}
+  .btn{background:var(--sp-green);border:none;border-radius:20px;color:#000;font-size:12px;font-weight:800;padding:9px 18px;cursor:pointer;transition:background .15s;font-family:inherit;letter-spacing:.5px}
+  .btn:hover{background:var(--sp-green-d)}
+  .btn.sec{background:var(--sp-gray2);color:var(--sp-white)}
+  .btn.sec:hover{background:#555}
+  .btn.danger{background:#b91c1c;color:#fff}
+  .btn.danger:hover{background:#991b1b}
+
+  .presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .pill{font-size:11px;background:var(--sp-gray2);border:none;border-radius:20px;color:var(--sp-light);padding:5px 13px;cursor:pointer;font-family:inherit;transition:background .12s}
+  .pill:hover{background:#555;color:#fff}
+
+  .stats{display:flex;gap:18px;margin-bottom:14px;font-size:11px;color:var(--sp-light);flex-wrap:wrap}
+  .stat-item strong{color:var(--sp-green);font-size:13px;font-weight:800}
+
+  .tree-wrap{background:var(--sp-gray);border-radius:12px;padding:14px 10px;overflow-x:auto;min-height:180px}
+  #tree-svg{display:block;margin:auto}
+
+  /* Search banner */
+  #search-banner{
+    background:#0d1f2d;border:1px solid #0ea5e9;border-radius:8px;
+    padding:9px 14px;margin-bottom:12px;font-size:12px;color:#7dd3fc;
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  }
+  #search-banner.hidden{display:none}
+  .banner-step{background:#0ea5e9;color:#000;font-weight:800;font-size:11px;border-radius:12px;padding:2px 9px;white-space:nowrap}
+  .result-ok{color:#1DB954;font-weight:800}
+  .result-fail{color:#ef4444;font-weight:800}
+
+  .log-wrap{margin-top:14px;background:var(--sp-gray);border-radius:12px;padding:10px 14px;max-height:100px;overflow-y:auto}
+  .log-line{font-size:11px;color:var(--sp-light);line-height:1.9;display:flex;gap:7px;align-items:baseline}
+  .tag{background:var(--sp-gray2);border-radius:4px;padding:1px 7px;font-size:10px;color:var(--sp-white);white-space:nowrap;font-weight:700}
+  .tag.rot{background:#7c3aed}.tag.ins{background:#1DB954;color:#000}.tag.del{background:#b91c1c}.tag.srch{background:#0ea5e9}
+
+  .legend{display:flex;gap:12px;margin-top:10px;font-size:10px;color:var(--sp-light);flex-wrap:wrap}
+  .leg-item{display:flex;align-items:center;gap:5px}
+  .leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:#1a1a1a}
+  ::-webkit-scrollbar-thumb{background:#3E3E3E;border-radius:4px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hdr">
+    <svg class="logo" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="12" fill="#1DB954"/>
+      <path d="M7 15.5c2.5-1.5 6-1.8 8.5-.5" stroke="#000" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M6 12c3-2 7.5-2.5 11 0" stroke="#000" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M5 8.5c3.5-2.5 9-3 13 0" stroke="#000" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span class="hdr-title">Simulador AVL — Catálogo Musical</span>
+    <span class="hdr-sub" id="balance-badge">Balanceado ✓</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('insert')">Insertar</button>
+    <button class="tab" onclick="switchTab('search')">Buscar</button>
+    <button class="tab" onclick="switchTab('delete')">Eliminar</button>
+  </div>
+
+  <div id="tab-insert">
+    <div class="controls">
+      <input class="inp" id="inp-song" placeholder="Nombre del artista o canción..." onkeydown="if(event.key==='Enter')doInsert()"/>
+      <button class="btn" onclick="doInsert()">+ AÑADIR</button>
+      <button class="btn sec" onclick="doReset()">REINICIAR</button>
+    </div>
+    <div class="presets">
+      <button class="pill" onclick="loadPreset()">🎵 Catálogo demo</button>
+      <button class="pill" onclick="loadPreset2()">🔥 Top Latino</button>
+    </div>
+  </div>
+
+  <div id="tab-search" style="display:none">
+    <div class="controls">
+      <input class="inp" id="inp-search" placeholder="Buscar artista..." onkeydown="if(event.key==='Enter')doSearch()"/>
+      <button class="btn" onclick="doSearch()">🔍 BUSCAR</button>
+    </div>
+    <div id="search-banner" class="hidden">
+      <span class="banner-step" id="banner-step">—</span>
+      <span id="banner-msg">—</span>
+    </div>
+  </div>
+
+  <div id="tab-delete" style="display:none">
+    <div class="controls">
+      <input class="inp" id="inp-del" placeholder="Artista a eliminar..." onkeydown="if(event.key==='Enter')doDelete()"/>
+      <button class="btn danger" onclick="doDelete()">✕ ELIMINAR</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-item">Nodos <strong id="s-nodes">0</strong></div>
+    <div class="stat-item">Altura <strong id="s-height">0</strong></div>
+    <div class="stat-item">Rotaciones <strong id="s-rots">0</strong></div>
+    <div class="stat-item" style="flex:1">In-order: <strong id="s-inorder" style="color:var(--sp-light);font-weight:400;font-size:11px">—</strong></div>
+  </div>
+
+  <div class="tree-wrap"><svg id="tree-svg" viewBox="0 0 680 220" width="680" height="220"></svg></div>
+
+  <div class="legend">
+    <div class="leg-item"><div class="leg-dot" style="background:#1DB954"></div>FB=0</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#7c3aed"></div>FB=±1</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#b91c1c"></div>FB=±2</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#1a5c35;border:2px solid #1DB954"></div>Raíz</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#0c3144;border:2px solid #0ea5e9"></div>Visitado</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#78350f;border:2px solid #f59e0b"></div>Comparando</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#166534;border:2px solid #1DB954"></div>Encontrado</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#7f1d1d;border:2px solid #ef4444"></div>No existe</div>
+  </div>
+
+  <div class="log-wrap" id="log-box">
+    <div class="log-line" style="color:#555;font-style:italic">Las operaciones aparecerán aquí...</div>
+  </div>
+</div>
+
+<script>
+const DEMO  = ["Drake","Bad Bunny","Taylor Swift","The Weeknd","Billie Eilish","Ed Sheeran","Ariana Grande","Coldplay","Karol G","Ozuna"];
+const DEMO2 = ["J Balvin","Maluma","Shakira","Daddy Yankee","Anuel AA","Nicky Jam","Farruko","Myke Towers","Sech","Rauw Alejandro"];
+
+let rotCount = 0;
+let searchState = null; // {path, active, foundKey, done}
+let animTimer = null;
+
+/* ── AVL ── */
+function mkNode(k){return{k,l:null,r:null,h:1}}
+function ht(n){return n?n.h:0}
+function bf(n){return n?ht(n.l)-ht(n.r):0}
+function upH(n){if(n)n.h=1+Math.max(ht(n.l),ht(n.r))}
+function rotR(y){let x=y.l,T=x.r;x.r=y;y.l=T;upH(y);upH(x);rotCount++;log(`Rotación derecha en "${y.k}"`,'rot');return x}
+function rotL(x){let y=x.r,T=y.l;y.l=x;x.r=T;upH(x);upH(y);rotCount++;log(`Rotación izquierda en "${x.k}"`,'rot');return y}
+function rebalance(n){
+  upH(n);let b=bf(n);
+  if(b>1){if(bf(n.l)<0)n.l=rotL(n.l);return rotR(n)}
+  if(b<-1){if(bf(n.r)>0)n.r=rotR(n.r);return rotL(n)}
+  return n;
+}
+function insert(n,k){
+  if(!n){log(`Insertado: "${k}"`,'ins');return mkNode(k)}
+  if(k<n.k)n.l=insert(n.l,k);
+  else if(k>n.k)n.r=insert(n.r,k);
+  else{log(`"${k}" ya existe`,'srch');return n}
+  return rebalance(n);
+}
+function minNode(n){while(n.l)n=n.l;return n}
+function del(n,k){
+  if(!n)return null;
+  if(k<n.k)n.l=del(n.l,k);
+  else if(k>n.k)n.r=del(n.r,k);
+  else{
+    if(!n.l||!n.r){log(`Eliminado: "${k}"`,'del');return n.l||n.r}
+    let s=minNode(n.r);n.k=s.k;n.r=del(n.r,s.k);
+  }
+  return rebalance(n);
+}
+function hasKey(n,k){if(!n)return false;if(k===n.k)return true;return k<n.k?hasKey(n.l,k):hasKey(n.r,k)}
+function inorder(n,a=[]){if(!n)return a;inorder(n.l,a);a.push(n.k);inorder(n.r,a);return a}
+
+/* Build path for search animation: [{key, cmp: 'equal'|'left'|'right'}] */
+function buildPath(n,k,path=[]){
+  if(!n)return path;
+  if(k===n.k){path.push({key:n.k,cmp:'equal'});return path}
+  if(k<n.k){path.push({key:n.k,cmp:'left'});return buildPath(n.l,k,path)}
+  path.push({key:n.k,cmp:'right'});return buildPath(n.r,k,path)
+}
+
+let root=null;
+
+function doInsert(){
+  let v=document.getElementById('inp-song').value.trim();
+  if(!v)return;
+  cancelSearch();
+  root=insert(root,v);
+  document.getElementById('inp-song').value='';
+  render();
+}
+
+function doSearch(){
+  let v=document.getElementById('inp-search').value.trim();
+  if(!v)return;
+  if(!root){log('Árbol vacío','srch');return}
+  cancelSearch();
+
+  let path=buildPath(root,v);
+  let found=path.length>0 && path[path.length-1].cmp==='equal';
+  log(found?`✓ Encontrado: "${v}" en ${path.length} comparación(es)`:`✗ "${v}" no encontrado tras ${path.length} comparación(es)`,'srch');
+
+  searchState={path, active:-1, foundKey:found?v:null, done:false};
+  showBanner();
+  runAnimation(v);
+}
+
+function showBanner(){
+  document.getElementById('search-banner').classList.remove('hidden');
+}
+
+function runAnimation(target){
+  if(!searchState)return;
+  let step=0;
+  const {path,foundKey}=searchState;
+
+  function tick(){
+    if(step<path.length){
+      searchState.active=step;
+      let cur=path[step];
+      let isLast=step===path.length-1;
+
+      document.getElementById('banner-step').textContent=`Paso ${step+1} / ${path.length}`;
+      if(cur.cmp==='equal'){
+        document.getElementById('banner-msg').innerHTML=`<span class="result-ok">✓ Encontrado:</span> "${cur.key}"`;
+      } else {
+        let dir=cur.cmp==='left'?'← ir a la izquierda':'→ ir a la derecha';
+        document.getElementById('banner-msg').innerHTML=
+          `Nodo <b style="color:#f59e0b">"${cur.key}"</b> &nbsp;·&nbsp; ${dir}`+
+          (isLast?' &nbsp;<span class="result-fail">— fin, no existe</span>':'');
+      }
+      render();
+      step++;
+      animTimer=setTimeout(tick,680);
+    } else {
+      searchState.done=true;
+      document.getElementById('banner-step').textContent=foundKey?'✓ Encontrado':'✗ No encontrado';
+      document.getElementById('banner-msg').innerHTML=foundKey
+        ?`<span class="result-ok">"${foundKey}"</span> hallado en ${path.length} paso(s)`
+        :`<span class="result-fail">"${target}"</span> no existe en el catálogo`;
+      render();
+      animTimer=setTimeout(()=>{cancelSearch();render();},2400);
+    }
+  }
+  tick();
+}
+
+function cancelSearch(){
+  if(animTimer){clearTimeout(animTimer);animTimer=null}
+  searchState=null;
+  document.getElementById('search-banner').classList.add('hidden');
+}
+
+function doDelete(){
+  let v=document.getElementById('inp-del').value.trim();
+  if(!v)return;
+  cancelSearch();
+  if(!hasKey(root,v)){log(`"${v}" no encontrado`,'srch');return}
+  root=del(root,v);
+  document.getElementById('inp-del').value='';
+  render();
+}
+
+function doReset(){
+  cancelSearch();root=null;rotCount=0;
+  document.getElementById('log-box').innerHTML='<div class="log-line" style="color:#555;font-style:italic">Las operaciones aparecerán aquí...</div>';
+  render();
+}
+function loadPreset(){cancelSearch();root=null;rotCount=0;clearLog();DEMO.forEach(d=>{root=insert(root,d)});render()}
+function loadPreset2(){cancelSearch();root=null;rotCount=0;clearLog();DEMO2.forEach(d=>{root=insert(root,d)});render()}
+
+function switchTab(t){
+  cancelSearch();
+  ['insert','search','delete'].forEach((n,i)=>{
+    document.getElementById('tab-'+n).style.display=n===t?'':'none';
+    document.querySelectorAll('.tab')[i].classList.toggle('active',n===t);
+  });
+}
+
+/* ── Render ── */
+const SVG_W=680, NR=20, LH=58;
+
+function svgEl(tag){return document.createElementNS('http://www.w3.org/2000/svg',tag)}
+
+function render(){
+  const svg=document.getElementById('tree-svg');
+  svg.innerHTML='';
+
+  if(!root){
+    svg.setAttribute('viewBox','0 0 680 70');svg.setAttribute('height','70');
+    let t=svgEl('text');t.setAttribute('x',340);t.setAttribute('y',38);
+    t.setAttribute('text-anchor','middle');t.setAttribute('font-size','13');
+    t.setAttribute('fill','#555');t.setAttribute('font-family','Nunito,sans-serif');
+    t.textContent='Árbol vacío — añade artistas al catálogo';svg.appendChild(t);
+    updateStats();return;
+  }
+
+  /* Compute positions */
+  let pos={};
+  function calcW(n){if(!n)return 0;return calcW(n.l)+calcW(n.r)+1}
+  function assign(n,x,y){
+    if(!n)return;
+    let lw=calcW(n.l);
+    pos[n.k]={x:x+lw,y};
+    assign(n.l,x,y+1);
+    assign(n.r,x+lw+1,y+1);
+  }
+  assign(root,0,0);
+  let xs=Object.values(pos).map(p=>p.x), ys=Object.values(pos).map(p=>p.y);
+  let minX=Math.min(...xs), maxX=Math.max(...xs), maxY=Math.max(...ys);
+  let cols=maxX-minX+1;
+  let cellW=Math.max(44,Math.floor((SVG_W-40)/cols));
+  let svgH=Math.max(120,(maxY+1)*LH+50);
+  svg.setAttribute('viewBox',`0 0 ${SVG_W} ${svgH}`);
+  svg.setAttribute('height',Math.min(svgH,480));
+
+  const cx=nx=>20+(nx-minX)*cellW+cellW/2;
+  const cy=ny=>32+ny*LH;
+
+  /* Build search lookup */
+  let visitedSet=new Set(), activeKey=null, foundKey=null, notFound=false;
+  if(searchState){
+    const {path,active,done,foundKey:fk}=searchState;
+    for(let i=0;i<=active&&i<path.length;i++) visitedSet.add(path[i].key);
+    if(active>=0&&active<path.length) activeKey=path[active].key;
+    if(done&&fk) foundKey=fk;
+    if(done&&!fk) notFound=true;
+  }
+
+  /* Draw highlighted path edges first */
+  if(searchState&&searchState.path.length>1){
+    const {path,active}=searchState;
+    for(let i=0;i<path.length-1&&i<=active;i++){
+      let pk=path[i].key, ck=path[i+1].key;
+      if(!pos[pk]||!pos[ck])continue;
+      let line=svgEl('line');
+      line.setAttribute('x1',cx(pos[pk].x));line.setAttribute('y1',cy(pos[pk].y)+NR);
+      line.setAttribute('x2',cx(pos[ck].x));line.setAttribute('y2',cy(pos[ck].y)-NR);
+      line.setAttribute('stroke','#0ea5e9');line.setAttribute('stroke-width','2.5');
+      line.setAttribute('stroke-dasharray','6 3');
+      svg.appendChild(line);
+    }
+  }
+
+  /* Draw regular edges */
+  function drawEdges(n){
+    if(!n)return;
+    ['l','r'].forEach(side=>{
+      if(!n[side])return;
+      let pk=n.k, ck=n[side].k;
+      // skip if highlighted
+      if(searchState){
+        let {path,active}=searchState;
+        for(let i=0;i<path.length-1&&i<=active;i++){
+          if(path[i].key===pk&&path[i+1].key===ck)return;
+        }
+      }
+      let line=svgEl('line');
+      line.setAttribute('x1',cx(pos[pk].x));line.setAttribute('y1',cy(pos[pk].y)+NR);
+      line.setAttribute('x2',cx(pos[ck].x));line.setAttribute('y2',cy(pos[ck].y)-NR);
+      line.setAttribute('stroke','#3a3a3a');line.setAttribute('stroke-width','1.5');
+      svg.appendChild(line);
+    });
+    drawEdges(n.l);drawEdges(n.r);
+  }
+  drawEdges(root);
+
+  /* Draw nodes */
+  function drawNode(n){
+    if(!n)return;
+    let p=pos[n.k], b=bf(n);
+    let isRoot=n===root;
+    let isVisited=visitedSet.has(n.k);
+    let isActive=n.k===activeKey;
+    let isFound=n.k===foundKey;
+    let isNotFound=notFound&&isActive;
+
+    let fill,stroke,sw;
+    if(isFound){fill='#166534';stroke='#1DB954';sw='3'}
+    else if(isNotFound){fill='#7f1d1d';stroke='#ef4444';sw='3'}
+    else if(isActive){fill='#78350f';stroke='#f59e0b';sw='3'}
+    else if(isVisited){fill='#0c3144';stroke='#0ea5e9';sw='2'}
+    else if(isRoot){fill='#1a5c35';stroke='#1DB954';sw='2'}
+    else{fill='#282828';stroke='#4a4a4a';sw='1'}
+
+    let g=svgEl('g');g.style.cursor='pointer';
+
+    /* Glow ring */
+    if(isActive||isFound||isNotFound){
+      let ring=svgEl('circle');
+      ring.setAttribute('cx',cx(p.x));ring.setAttribute('cy',cy(p.y));ring.setAttribute('r',NR+6);
+      ring.setAttribute('fill','none');
+      ring.setAttribute('stroke',isFound?'#1DB954':isNotFound?'#ef4444':'#f59e0b');
+      ring.setAttribute('stroke-width','2');ring.setAttribute('opacity','0.35');
+      g.appendChild(ring);
+    }
+
+    /* Shadow */
+    let sh=svgEl('circle');
+    sh.setAttribute('cx',cx(p.x)+1);sh.setAttribute('cy',cy(p.y)+2);sh.setAttribute('r',NR);
+    sh.setAttribute('fill','rgba(0,0,0,0.5)');g.appendChild(sh);
+
+    /* Main circle */
+    let circ=svgEl('circle');
+    circ.setAttribute('cx',cx(p.x));circ.setAttribute('cy',cy(p.y));circ.setAttribute('r',NR);
+    circ.setAttribute('fill',fill);circ.setAttribute('stroke',stroke);circ.setAttribute('stroke-width',sw);
+    g.appendChild(circ);
+
+    /* BF badge */
+    let bc=Math.abs(b)>1?'#b91c1c':b===0?'#1DB954':'#7c3aed';
+    let bd=svgEl('circle');
+    bd.setAttribute('cx',cx(p.x)+NR-4);bd.setAttribute('cy',cy(p.y)-NR+5);
+    bd.setAttribute('r',7);bd.setAttribute('fill',bc);g.appendChild(bd);
+    let bt=svgEl('text');
+    bt.setAttribute('x',cx(p.x)+NR-4);bt.setAttribute('y',cy(p.y)-NR+9);
+    bt.setAttribute('text-anchor','middle');bt.setAttribute('font-size','8');
+    bt.setAttribute('fill','#fff');bt.setAttribute('font-weight','800');
+    bt.setAttribute('font-family','Nunito,sans-serif');bt.textContent=b;g.appendChild(bt);
+
+    /* Label */
+    let lbl=n.k.length>9?n.k.slice(0,8)+'…':n.k;
+    let tc=isFound||isActive?'#fff':isVisited?'#7dd3fc':'#e8e8e8';
+    let txt=svgEl('text');
+    txt.setAttribute('x',cx(p.x));txt.setAttribute('y',cy(p.y)+4);
+    txt.setAttribute('text-anchor','middle');txt.setAttribute('font-size','10');
+    txt.setAttribute('fill',tc);txt.setAttribute('font-weight','700');
+    txt.setAttribute('font-family','Nunito,sans-serif');txt.textContent=lbl;g.appendChild(txt);
+
+    /* Direction arrow below active node */
+    if(isActive&&searchState&&!searchState.done){
+      let step=searchState.path[searchState.active];
+      if(step&&step.cmp!=='equal'){
+        let arrow=step.cmp==='left'?'←':'→';
+        let at=svgEl('text');
+        at.setAttribute('x',cx(p.x));at.setAttribute('y',cy(p.y)+NR+14);
+        at.setAttribute('text-anchor','middle');at.setAttribute('font-size','14');
+        at.setAttribute('fill','#f59e0b');at.setAttribute('font-weight','800');
+        at.setAttribute('font-family','Nunito,sans-serif');at.textContent=arrow;g.appendChild(at);
+      }
+    }
+
+    svg.appendChild(g);
+    drawNode(n.l);drawNode(n.r);
+  }
+  drawNode(root);
+  updateStats();
+}
+
+function updateStats(){
+  let io=inorder(root);
+  document.getElementById('s-nodes').textContent=io.length;
+  document.getElementById('s-height').textContent=ht(root);
+  document.getElementById('s-rots').textContent=rotCount;
+  let short=io.slice(0,6).join(' · ')+(io.length>6?' …':'');
+  document.getElementById('s-inorder').textContent=short||'—';
+  let bal=!root||Math.abs(bf(root))<=1;
+  let badge=document.getElementById('balance-badge');
+  badge.textContent=bal?'Balanceado ✓':'Desbalanceado ✗';
+  badge.style.color=bal?'#1DB954':'#ef4444';
+}
+
+function log(msg,type){
+  let box=document.getElementById('log-box');
+  if(box.querySelector('[style*="italic"]'))box.innerHTML='';
+  let tags={rot:'ROTACIÓN',ins:'INSERT',del:'DELETE',srch:'BÚSQUEDA'};
+  let d=document.createElement('div');d.className='log-line';
+  d.innerHTML=`<span class="tag ${type}">${tags[type]||type}</span><span>${msg}</span>`;
+  box.prepend(d);
+  while(box.children.length>12)box.removeChild(box.lastChild);
+}
+function clearLog(){document.getElementById('log-box').innerHTML=''}
+
+render();
+loadPreset();
+</script>
+</body>
+</html>
